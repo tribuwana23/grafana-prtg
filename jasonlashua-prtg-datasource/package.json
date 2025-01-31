@@ -8,12 +8,12 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/neuralfraud/grafana-prtg.git"
+    "url": "git+https://github.com/tribuwana23/grafana-prtg.git"
   },
   "author": "Jason Lashua",
   "license": "Apache-2.0",
   "bugs": {
-    "url": "https://github.com/neuralfraud/grafana-prtg/issues"
+    "url": "https://github.com/tribuwana23/grafana-prtg/issues"
   },
   "devDependencies": {
     "babel": "~6.5.1",
@@ -35,5 +35,5 @@
     "grunt-build-number": "^1.0.0",
     "lodash": ">=4.17.13"
   },
-  "homepage": "https://github.com/neuralfraud/grafana-prtg"
+  "homepage": "https://github.com/tribuwana23/grafana-prtg"
 }
