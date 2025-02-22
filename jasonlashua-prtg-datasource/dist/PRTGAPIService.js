@@ -215,8 +215,10 @@ System.register(["angular", "lodash", "./utils"], function (_export, _context) {
               findItem = item.device;
             } else if (item.sensor && !item.name) {
               findItem = item.sensor;
-            } else if (item.name) {
+            } else if (item.name && !item.objid) {
               findItem = item.name;
+            } else if (item.objid) {
+              findItem = item.objid;
             } else {
               return false;
             }
@@ -251,55 +253,45 @@ System.register(["angular", "lodash", "./utils"], function (_export, _context) {
       }, {
         key: "getHosts",
         value: function getHosts() {
-          var _this3 = this;
+        var _this3 = this;
 
-          var groupFilter = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : "/.*/";
-          var hostFilter = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : "/.*/";
+        var groupFilter = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : "/.*/";
+        var hostFilter = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : "/.*/";
 
-          //this is kind of silly but no need to include filter_group params if you include all...
-          if (groupFilter == "/.*/") {
-            return this.performDeviceSuggestQuery().then(function (devices) {
-              return _this3.filterQuery(devices, hostFilter);
-            });
-          } else {
-            return this.getGroups(groupFilter).then(function (filteredGroups) {
-              var filters = [];
-              _.each(filteredGroups, function (group) {
-                filters.push("filter_group=" + group.group);
-              });
+  // Always include the group filter in the query
+        return this.getGroups(groupFilter).then(function (filteredGroups) {
+          var filters = [];
+          _.each(filteredGroups, function (group) {
+           filters.push("filter_group=" + group.group);
+         });
 
-              return _this3.performDeviceSuggestQuery("&" + filters.join("&")).then(function (devices) {
-                return _this3.filterQuery(devices, hostFilter);
-              });
-            });
-          }
-        }
+         return _this3.performDeviceSuggestQuery("&" + filters.join("&")).then(function (devices) {
+           return _this3.filterQuery(devices, hostFilter);
+         });
+       });
+     }
       }, {
         key: "getSensors",
         value: function getSensors() {
-          var groupFilter = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : "/.*/";
+        var groupFilter = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : "/.*/";
 
-          var _this4 = this;
+        var _this4 = this;
 
-          var hostFilter = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : "/.*/";
-          var sensorFilter = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : "/.*/";
+        var hostFilter = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : "/.*/";
+        var sensorFilter = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : "/.*/";
 
-          return this.getHosts(groupFilter, hostFilter).then(function (hosts) {
-            var filters = [];
-            _.each(hosts, function (host) {
-              filters.push("filter_device=" + host.device);
-            });
-            if (hostFilter == "/.*/" && groupFilter == "/.*/") {
-              return _this4.performSensorSuggestQuery().then(function (sensors) {
-                return _this4.filterQuery(sensors, sensorFilter);
-              });
-            } else {
-              return _this4.performSensorSuggestQuery("&" + filters.join("&")).then(function (sensors) {
-                return _this4.filterQuery(sensors, sensorFilter);
-              });
-            }
-          });
-        }
+        return this.getHosts(groupFilter, hostFilter).then(function (hosts) {
+          var filters = [];
+          _.each(hosts, function (host) {
+             filters.push("filter_device=" + host.device);
+             filters.push("filter_group=" + host.group); // Include group filter
+         });
+
+         return _this4.performSensorSuggestQuery("&" + filters.join("&")).then(function (sensors) {
+           return _this4.filterQuery(sensors, sensorFilter);
+         });
+        });
+     }
       }, {
         key: "getAllItems",
         value: function getAllItems() {
@@ -384,11 +376,33 @@ System.register(["angular", "lodash", "./utils"], function (_export, _context) {
 
           return this.performPRTGAPIRequest(method, params).then(function (results) {
             for (var iter = 0; iter < results.length; iter++) {
+
+              const datetimeString = results[iter]["datetime"];
+              // Match the datetime format
+              const match = datetimeString.match(/(\d{2})\/(\d{2})\/(\d{4})\s(\d{2})\.(\d{2})\.(\d{2})/);
+
+              if (match) {
+                // Extract components
+                const day = match[1];
+                const month = match[2];
+                const year = match[3];
+                const hours = match[4];
+                const minutes = match[5];
+                const seconds = match[6];
+
+               // Reformat to YYYY-MM-DDTHH:mm:ss
+                const reformattedDate = `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;
+
+                // Parse the reformatted date
+                var parsedDate = Date.parse(reformattedDate);
+              }
+
               history.push({
                 sensor: sensor,
                 channel: channel,
-                datetime: Date.parse(results[iter]["datetime"].match(/(\d{2}\/\d{2}\/\d{4}\s\d{2}\.\d{2}\.\d{2})/)[1]),
-//                datetime: Date.parse(results[iter]["datetime"].match(/(\d+\/\d+\/\d+\s\d+:\d+:\d+\s\w+)\s?/)[1]), //Let's pray there are no Chinese timestamps
+//                datetime: Date.parse(results[iter]["datetime"].match(/(\d+\/\d+\/\d+\s\d+\.\d+\.\d+)\s?/)[1]), //Let's pray there are no Chinese timestamps
+//                datetime: Date.parse(results[iter]["datetime"].match(/(\d+\/\d+\/\d+\s\d+\.\d+\.\d+)\s?/)[1].replace(/([0-9]+)\/([0-9]+)/,'$2/$1')),
+                datetime: parsedDate,
                 value: results[iter][channel]
               });
             }
